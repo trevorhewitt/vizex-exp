@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Experiment Console</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --muted:#2a2f3a;
+    --text:#e8eaf0; --sub:#b9c0cf; --accent:#4aa3ff;
+    --ok:#29cc7a; --warn:#ff9f1a; --danger:#ff4d4f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  h1{font-size:clamp(20px,3.6vw,30px);margin:12px 0 8px}
+  h2{font-size:clamp(18px,2.8vw,22px);margin:8px 0}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:var(--panel);border:1px solid var(--muted);border-radius:14px;padding:14px}
+  .toolbar{align-items:center;gap:10px}
+  .toolbar label{font-weight:600;color:var(--sub)}
+  select,button{background:#0e1117;color:var(--text);border:1px solid var(--muted);border-radius:10px;padding:10px 12px}
+  select:focus,button:focus{outline:2px solid var(--accent)}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:transparent;color:#04111f}
+  button.ghost{background:transparent}
+  .grow{flex:1 1 auto}
+  .grid{display:grid;gap:14px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+  .grid.cols-9{grid-template-columns:repeat(9,1fr)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .order-display{display:flex;gap:8px;flex-wrap:wrap;padding:10px;background:#0e1117;border:1px dashed var(--muted);border-radius:10px}
+  .chip{padding:6px 10px;border-radius:10px;border:1px solid var(--muted);background:#0b0e13;color:var(--sub)}
+  .chip.current{border-color:var(--accent);color:#fff;background:#0b233f}
+  .chip.break{border-color:#6b7280;background:#141720;color:#cbd5e1}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 10px}
+  .kv div:nth-child(odd){color:var(--sub)}
+  .participants .spot{background:#0e1117;border:1px solid var(--muted);border-radius:12px;padding:10px;min-height:86px;display:flex;flex-direction:column;justify-content:space-between}
+  .participants .name{font-weight:700}
+  .participants .code{font-size:14px;color:var(--sub);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .participants .empty{opacity:.5;font-style:italic}
+  .legend{font-size:14px;color:var(--sub)}
+  .trial-meaning{padding:10px;border-radius:10px;background:#0e1117;border:1px solid var(--muted)}
+  .btn-pair{display:flex;gap:10px;align-items:center}
+  .btn-pair button{min-width:90px}
+  .timers{display:grid;gap:16px}
+  .timer{background:#0e1117;border:1px solid var(--muted);border-radius:12px;padding:12px}
+  .timer .headline{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .timer .time{font-size:36px;font-weight:800;letter-spacing:1px}
+  .timer .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .banner{margin-top:8px;padding:8px 10px;border-radius:8px;font-weight:800;text-align:center;display:none}
+  .banner.one{background:#2a1f06;color:var(--warn);border:1px solid #8a5b00}
+  .banner.fin{background:#2a0c0d;color:var(--danger);border:1px solid #a31217}
+  .muted{color:var(--sub)}
+  .small{font-size:13px}
+  .hidden{display:none !important}
+  .warnbox{background:#2a1f06;border:1px solid #8a5b00;color:#ffce73;padding:10px;border-radius:10px}
+  @media (max-width:900px){ .grid.cols-9{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:600px){ .grid.cols-9{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Experiment Console</h1>
+
+    <div class="card row toolbar" style="justify-content:space-between;">
+      <div class="row toolbar">
+        <strong>Data:</strong>
+        <span class="small muted mono">exp.csv</span>
+      </div>
+      <div class="row toolbar">
+        <label for="sessionSelect">Session:</label>
+        <select id="sessionSelect" disabled><option>— Loading exp.csv —</option></select>
+        <button id="reloadBtn" class="ghost" title="Re-fetch exp.csv (no cache)">Reload CSV</button>
+      </div>
+    </div>
+
+    <div id="fetchWarn" class="card warnbox hidden">
+      Couldn’t load <span class="mono">exp.csv</span>. Make sure this page is served over http(s) from the same folder, and that <span class="mono">exp.csv</span> is present with headers: <span class="mono">Session, order, 1, …, 9</span>.
+    </div>
+
+    <div id="content" class="hidden">
+      <!-- Order + trial navigation -->
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>Trial Order</h2>
+          <div id="orderString" class="mono muted" style="margin-bottom:8px;"></div>
+          <div id="orderChips" class="order-display"></div>
+          <div class="row" style="align-items:center;margin-top:10px;gap:12px;">
+            <div class="btn-pair">
+              <button id="prevBtn">◀ Prev</button>
+              <button id="nextBtn" class="primary">Next ▶</button>
+            </div>
+            <div class="small muted">Use arrow keys ← →</div>
+            <div class="grow"></div>
+            <div>
+              <label class="small muted">Skip breaks (X): <input type="checkbox" id="skipBreaks" checked /></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Current Trial</h2>
+          <div class="kv" style="margin-bottom:10px;">
+            <div>Block:</div><div id="kvBlock">—</div>
+            <div>Trial in block:</div><div id="kvTrialInBlock">—</div>
+            <div>Overall (non-break):</div><div id="kvOverall">—</div>
+            <div>Code:</div><div id="kvCode" class="mono">—</div>
+          </div>
+          <div class="trial-meaning">
+            <div class="legend small">Meaning</div>
+            <div id="meaningMain" style="font-weight:700;margin-top:4px;">—</div>
+            <div id="meaningSub" class="muted small">—</div>
+          </div>
+          <div class="small muted" style="margin-top:10px;">
+            Legend: A/B/C/D = Image trial • 0..6 = LIGHT Hz (2,5,10,15,20,40,80) • X = Break
+          </div>
+        </div>
+      </div>
+
+      <!-- Participants -->
+      <div class="card">
+        <h2>Participants (9 spots)</h2>
+        <div class="small muted" style="margin-bottom:8px;">
+          Deterministic randomization with seed = order string. Codes = (last-name-first-3 letters, +1 cipher) + 4 seeded digits.
+        </div>
+        <div id="participantsGrid" class="grid cols-9 participants"></div>
+      </div>
+
+      <!-- Timers -->
+      <div class="grid cols-2 timers">
+        <div class="timer" data-mins="3" data-secs="0">
+          <div class="headline">
+            <div><strong>Timer A</strong> (3:00)</div>
+            <div class="time" data-role="time">03:00</div>
+          </div>
+          <div class="controls">
+            <button class="primary" data-action="start">Start</button>
+            <button data-action="pause">Pause</button>
+            <button data-action="reset">Reset</button>
+          </div>
+          <div class="banner one" data-role="one">ONE MINUTE</div>
+          <div class="banner fin" data-role="fin">FINISHED</div>
+        </div>
+        <div class="timer" data-mins="3" data-secs="35">
+          <div class="headline">
+            <div><strong>Timer B</strong> (3:35)</div>
+            <div class="time" data-role="time">03:35</div>
+          </div>
+          <div class="controls">
+            <button class="primary" data-action="start">Start</button>
+            <button data-action="pause">Pause</button>
+            <button data-action="reset">Reset</button>
+          </div>
+          <div class="banner one" data-role="one">ONE MINUTE</div>
+          <div class="banner fin" data-role="fin">FINISHED</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+/* =========================
+   Small utilities
+========================= */
+const hzMap = { '0': '2 Hz', '1': '5 Hz', '2': '10 Hz', '3': '15 Hz', '4': '20 Hz', '5': '40 Hz', '6': '80 Hz' };
+const isLightCode = c => '0123456'.includes(c);
+const isImageCode = c => 'ABCD'.includes(c);
+const isBreak = c => c === 'X';
+
+function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+
+/* FNV-1a hash for seeding from strings */
+function fnv1a(str){
+  let h=0x811c9dc5;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = (h + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;
+  }
+  return h>>>0;
+}
+/* Mulberry32 PRNG */
+function mulberry32(a){ return function(){ let t = a += 0x6D2B79F5; t = Math.imul(t ^ t>>>15, t | 1); t ^= t + Math.imul(t ^ t>>>7, t | 61); return ((t ^ t>>>14) >>> 0) / 4294967296; }; }
+
+/* Deterministic shuffle */
+function seededShuffle(arr, seedStr){
+  const rnd = mulberry32(fnv1a(seedStr));
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(rnd()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+/* CSV parsing (handles quoted fields with commas, trims headers) */
+function parseCSV(text){
+  const rows = [];
+  let i=0, field='', inQuotes=false, row=[];
+  function pushField(){ row.push(field); field=''; }
+  function pushRow(){ rows.push(row); row=[]; }
+  while(i<text.length){
+    const c = text[i];
+    if(inQuotes){
+      if(c==='"' && text[i+1]==='"'){ field+='"'; i+=2; continue; }
+      if(c==='"'){ inQuotes=false; i++; continue; }
+      field+=c; i++; continue;
+    }else{
+      if(c==='"'){ inQuotes=true; i++; continue; }
+      if(c===','){ pushField(); i++; continue; }
+      if(c==='\r'){ i++; continue; }
+      if(c==='\n'){ pushField(); pushRow(); i++; continue; }
+      field+=c; i++; continue;
+    }
+  }
+  if(field!=='' || row.length){ pushField(); pushRow(); }
+  if(rows.length===0) return { header:[], data:[] };
+  const header = rows[0].map(h=>h.trim());
+  const data = rows.slice(1).map(r => {
+    const obj={};
+    for(let j=0;j<header.length;j++){ obj[header[j]] = (r[j]??'').trim(); }
+    return obj;
+  });
+  return { header, data };
+}
+
+/* Participant code generator */
+function makeParticipantCode(fullName){
+  const name = (fullName||'').trim();
+  if(!name){ return 'EMPTY0000'; }
+  const parts = name.split(/\s+/);
+  const last = parts.length ? parts[parts.length-1] : name;
+  const base = (last.length>=3 ? last.slice(0,3) : (last + 'XXX').slice(0,3)).toUpperCase();
+  const shifted = base.replace(/[A-Z]/g, ch => String.fromCharCode(((ch.charCodeAt(0)-65+1)%26)+65));
+  const rnd = mulberry32(fnv1a(name));
+  let digits = '';
+  for(let i=0;i<4;i++){ digits += Math.floor(rnd()*10); }
+  return shifted + digits;
+}
+
+/* Order analysis */
+function analyzeOrder(order){
+  const chars = order.split('');
+  const blocks = [];
+  let cur=[];
+  for(const c of chars){
+    if(c==='X'){ blocks.push(cur); cur=[]; }
+    else{ cur.push(c); }
+  }
+  blocks.push(cur);
+  const nonBreak = chars.filter(c=>c!=='X');
+  return { blocks, nonBreak, chars };
+}
+
+/* Meaning */
+function trialMeaning(c){
+  if(isBreak(c)) return { main:'Break', sub:'Pause between blocks' };
+  if(isImageCode(c)) return { main:`Image trial ${c}`, sub:'Present image stimulus' };
+  if(isLightCode(c)) return { main:`LIGHT ${hzMap[c]}`, sub:`Flicker frequency: ${hzMap[c]}` };
+  return { main:'Unknown', sub:'' };
+}
+
+/* =========================
+   State
+========================= */
+const state = {
+  csv:{ header:[], data:[] },
+  sessions:[],
+  currentIndex:0,
+  currentRow:null,
+  skipBreaks:true
+};
+
+/* =========================
+   DOM refs
+========================= */
+const el = {
+  reload: document.getElementById('reloadBtn'),
+  select: document.getElementById('sessionSelect'),
+  fetchWarn: document.getElementById('fetchWarn'),
+  content: document.getElementById('content'),
+  orderString: document.getElementById('orderString'),
+  orderChips: document.getElementById('orderChips'),
+  prev: document.getElementById('prevBtn'),
+  next: document.getElementById('nextBtn'),
+  skipBreaks: document.getElementById('skipBreaks'),
+  kvBlock: document.getElementById('kvBlock'),
+  kvTrialInBlock: document.getElementById('kvTrialInBlock'),
+  kvOverall: document.getElementById('kvOverall'),
+  kvCode: document.getElementById('kvCode'),
+  meaningMain: document.getElementById('meaningMain'),
+  meaningSub: document.getElementById('meaningSub'),
+  participants: document.getElementById('participantsGrid')
+};
+
+/* =========================
+   CSV fetch & session init
+========================= */
+async function loadCSVFromSameDir(){
+  el.fetchWarn.classList.add('hidden');
+  el.select.disabled = true;
+  el.select.innerHTML = `<option>— Loading exp.csv —</option>`;
+  try{
+    const res = await fetch('exp.csv', { cache: 'no-store' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const { header, data } = parseCSV(text);
+    const needCols = ['Session','order','1','2','3','4','5','6','7','8','9'];
+    const hasAll = needCols.every(c => header.includes(c));
+    if(!hasAll) throw new Error('Missing required headers');
+    state.csv = { header, data };
+    state.sessions = data;
+    el.select.innerHTML = state.sessions.map((row,idx)=>`<option value="${idx}">${row['Session']}</option>`).join('');
+    el.select.disabled = false;
+    el.content.classList.remove('hidden');
+    el.select.value = "0";
+    onSessionChange();
+  }catch(err){
+    console.error('Failed to load exp.csv:', err);
+    el.fetchWarn.classList.remove('hidden');
+    el.content.classList.add('hidden');
+  }
+}
+
+function onSessionChange(){
+  const idx = parseInt(el.select.value,10);
+  state.currentRow = state.sessions[idx];
+  state.currentIndex = 0;
+  state.skipBreaks = el.skipBreaks.checked;
+  renderAll();
+}
+
+/* =========================
+   Rendering
+========================= */
+function renderAll(){
+  const order = (state.currentRow?.order || '').replace(/\s+/g,'').toUpperCase();
+  el.orderString.textContent = order || '—';
+  renderOrderChips(order);
+  if(order){
+    if(state.skipBreaks && order[state.currentIndex]==='X'){
+      step(+1, true);
+      return;
+    }
+    renderCurrentTrial(order);
+    renderParticipants(order);
+  }else{
+    clearCurrent();
+    el.participants.innerHTML = '';
+  }
+}
+
+function renderOrderChips(order){
+  el.orderChips.innerHTML = '';
+  order.split('').forEach((c,i)=>{
+    const span = document.createElement('span');
+    span.className = 'chip' + (c==='X' ? ' break' : '') + (i===state.currentIndex ? ' current' : '');
+    span.textContent = c;
+    span.title = isBreak(c) ? 'Break' : (isImageCode(c) ? `Image ${c}` : (isLightCode(c) ? `LIGHT ${hzMap[c]}` : 'Unknown'));
+    span.addEventListener('click', ()=>{ state.currentIndex = i; renderAll(); });
+    el.orderChips.appendChild(span);
+  });
+}
+
+function renderCurrentTrial(order){
+  const { blocks, nonBreak, chars } = analyzeOrder(order);
+  const idx = state.currentIndex;
+  const code = chars[idx];
+  let bIdx=0, tIdx=0, cursor=0;
+  for(let b=0;b<blocks.length;b++){
+    const block = blocks[b];
+    const found = (idx >= cursor) && (idx < cursor + block.length);
+    if(found){ bIdx=b; tIdx = idx - cursor; break; }
+    cursor += block.length + 1; // +1 for the X
+  }
+  const nonBreakIndex = chars.slice(0, idx+1).filter(c=>c!=='X').length;
+  const mean = trialMeaning(code);
+
+  el.kvBlock.textContent = isBreak(code) ? `${bIdx+1} (break)` : (bIdx+1);
+  el.kvTrialInBlock.textContent = isBreak(code) ? '— (break)' : `${tIdx+1} of ${blocks[bIdx].length}`;
+  el.kvOverall.textContent = isBreak(code) ? '— (break)' : `${nonBreakIndex} of ${nonBreak.length}`;
+  el.kvCode.textContent = code || '—';
+  el.meaningMain.textContent = mean.main;
+  el.meaningSub.textContent = mean.sub;
+}
+
+function clearCurrent(){
+  el.kvBlock.textContent = '—';
+  el.kvTrialInBlock.textContent = '—';
+  el.kvOverall.textContent = '—';
+  el.kvCode.textContent = '—';
+  el.meaningMain.textContent = '—';
+  el.meaningSub.textContent = '—';
+}
+
+function renderParticipants(order){
+  const row = state.currentRow;
+  const names = [];
+  for(let i=1;i<=9;i++){ names.push((row[String(i)]||'').trim()); }
+  const indices = [0,1,2,3,4,5,6,7,8];
+  const shuffledIdx = seededShuffle(indices, order);
+  const spots = shuffledIdx.map(i => names[i]||'');
+  el.participants.innerHTML = '';
+  spots.forEach((name, pos)=>{
+    const div = document.createElement('div');
+    div.className = 'spot';
+    const top = document.createElement('div');
+    const bottom = document.createElement('div');
+
+    const title = document.createElement('div');
+    title.className = 'name';
+    title.textContent = name || 'Empty';
+    if(!name) title.classList.add('empty');
+
+    const code = document.createElement('div');
+    code.className = 'code';
+    code.textContent = name ? makeParticipantCode(name) : '—';
+
+    const posEl = document.createElement('div');
+    posEl.className = 'small muted';
+    posEl.textContent = `Position ${pos+1}`;
+
+    top.appendChild(title);
+    bottom.appendChild(code);
+    div.appendChild(top);
+    div.appendChild(posEl);
+    div.appendChild(bottom);
+    el.participants.appendChild(div);
+  });
+}
+
+/* =========================
+   Navigation
+========================= */
+function step(delta, internal=false){
+  const order = (state.currentRow?.order || '').replace(/\s+/g,'').toUpperCase();
+  if(!order) return;
+  const N = order.length;
+  let idx = clamp(state.currentIndex + delta, 0, N-1);
+  if(state.skipBreaks){
+    while(order[idx]==='X'){
+      const nextIdx = idx + Math.sign(delta || 1);
+      if(nextIdx<0 || nextIdx>=N) break;
+      idx = nextIdx;
+    }
+  }
+  state.currentIndex = idx;
+  renderOrderChips(order);
+  renderCurrentTrial(order);
+}
+
+window.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowRight') step(+1);
+  if(e.key==='ArrowLeft') step(-1);
+});
+
+/* =========================
+   Timers
+========================= */
+class Countdown {
+  constructor(root){
+    this.root = root;
+    this.tEl = root.querySelector('[data-role="time"]');
+    this.one = root.querySelector('[data-role="one"]');
+    this.fin = root.querySelector('[data-role="fin"]');
+    this.baseSecs = parseInt(root.getAttribute('data-mins'),10)*60 + parseInt(root.getAttribute('data-secs'),10);
+    this.remaining = this.baseSecs;
+    this.tickId = null;
+    this.render();
+    root.querySelector('[data-action="start"]').addEventListener('click', ()=>this.start());
+    root.querySelector('[data-action="pause"]').addEventListener('click', ()=>this.pause());
+    root.querySelector('[data-action="reset"]').addEventListener('click', ()=>this.reset());
+  }
+  fmt(secs){
+    const m = Math.floor(secs/60), s = secs%60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  render(){
+    this.tEl.textContent = this.fmt(this.remaining);
+    if(this.remaining <= 60 && this.remaining > 0){ this.one.style.display = 'block'; }
+    else{ this.one.style.display = 'none'; }
+    this.fin.style.display = (this.remaining===0) ? 'block' : 'none';
+  }
+  start(){
+    if(this.tickId || this.remaining===0){ return; }
+    this.tickId = setInterval(()=>{
+      if(this.remaining>0){ this.remaining--; this.render(); }
+      if(this.remaining===0){ this.pause(); this.render(); }
+    }, 1000);
+  }
+  pause(){ if(this.tickId){ clearInterval(this.tickId); this.tickId=null; } }
+  reset(){
+    this.pause();
+    this.remaining = this.baseSecs;
+    this.one.style.display = 'none';
+    this.fin.style.display = 'none';
+    this.render();
+  }
+}
+function initTimers(){ document.querySelectorAll('.timer').forEach(t => new Countdown(t)); }
+
+/* =========================
+   Events & init
+========================= */
+document.getElementById('prevBtn').addEventListener('click', ()=> step(-1));
+document.getElementById('nextBtn').addEventListener('click', ()=> step(+1));
+document.getElementById('skipBreaks').addEventListener('change', ()=>{
+  state.skipBreaks = el.skipBreaks.checked;
+  renderAll();
+});
+el.select.addEventListener('change', onSessionChange);
+el.reload.addEventListener('click', loadCSVFromSameDir);
+
+initTimers();
+loadCSVFromSameDir(); // auto-load exp.csv on page open
+</script>
+</body>
+</html>
