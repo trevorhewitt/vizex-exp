@@ -169,8 +169,9 @@
 
       const rendered = notificationsData.slice().reverse().slice(0, 10);
       rendered.forEach(data => {
-        const participantId = data.participant || "UNKNOWN";
-        const pageId = data.page || "UNKNOWN";
+        // Use p for participant code and i for trial index
+          const participantId = data.p || "UNKNOWN";
+          const pageId = data.i || "UNKNOWN";
         const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Unknown Time";
         const bgColor = getPseudoRandomColor(participantId, participantOffsetText);
         const borderColor = getPseudoRandomColor(pageId, pageOffsetText, true);
