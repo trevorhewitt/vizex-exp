@@ -9,31 +9,40 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
   <style>
-    body {
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
       background-color: #121212;
       color: #ffffff;
-      padding: 20px;
-      text-align: center;
+      box-sizing: border-box;
+      text-align: left;
     }
 
     /* Notification Styles */
     #notifications {
       list-style-type: none;
-      padding: 0;
-      max-height: 500px;
+      padding: 8px;
+      margin: 0;
+      /* leave space for the fixed offsetControls (approx 120px) */
+      height: calc(100vh - 140px);
       overflow-y: auto;
-      margin-bottom: 30px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .notification {
       padding: 10px;
-      margin: 5px 0;
+      margin: 6px 0;
       color: #ffffff;
       font-weight: bold;
       border-radius: 5px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
       border: 5px solid;
+      display: block;
+      width: calc(100% - 20px);
+      box-sizing: border-box;
     }
 
     /* Timer Styles */
@@ -130,8 +139,12 @@
     const notificationsRef = db.ref("notifications");
     const notificationsList = document.getElementById("notifications");
 
-    // Global storage for notification data
+    // Global storage for notification data (restore from localStorage if present)
     let notificationsData = [];
+    try{
+      const saved = localStorage.getItem('pt_monitor_history');
+      if(saved){ notificationsData = JSON.parse(saved); }
+    }catch(e){ console.warn('Failed to read saved history', e); }
 
     // Function to generate a pseudo-random dark colour based on a string
     function getPseudoRandomColor(input, offsetText, isPage = false) {
@@ -152,8 +165,8 @@
       const participantOffsetText = document.getElementById("participantOffset").value || "";
       const pageOffsetText = document.getElementById("pageOffset").value || "";
 
-      const rendered = notificationsData.slice().reverse().slice(0, 10);
-      rendered.forEach(data => {
+  const rendered = notificationsData.slice().reverse();
+  rendered.forEach(data => {
         // Extract expected params: p (participant code), n (display name), s (session),
         // t (trial order), i (trial index, default "0"), m (mode: 0=experiment,1=dev)
         const participantId = data.p || "UNKNOWN";
@@ -177,20 +190,29 @@
       });
     }
 
-    // Update notifications from Firebase
+    // Update notifications from Firebase (initial load)
     function updateNotifications(snapshot) {
       notificationsData = [];
       snapshot.forEach(childSnapshot => {
         const data = childSnapshot.val() || {};
         notificationsData.push(data);
       });
+      // persist
+      try{ localStorage.setItem('pt_monitor_history', JSON.stringify(notificationsData)); }catch(e){ }
+      renderNotifications();
+    }
+
+    // Append a single child when added (keeps history and avoids re-fetching whole node)
+    function onChildAdded(childSnapshot){
+      const data = childSnapshot.val() || {};
+      notificationsData.push(data);
+      try{ localStorage.setItem('pt_monitor_history', JSON.stringify(notificationsData)); }catch(e){ }
+      // render only the new item by re-rendering full list (fast for modest sizes)
       renderNotifications();
     }
 
     notificationsRef.once("value", updateNotifications);
-    notificationsRef.on("child_added", () => {
-      notificationsRef.once("value", updateNotifications);
-    });
+    notificationsRef.on("child_added", onChildAdded);
 
     document.getElementById("refreshButton").addEventListener("click", renderNotifications);
     console.log("Listening for real-time notifications...");
