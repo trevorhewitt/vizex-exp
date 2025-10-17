@@ -129,35 +129,7 @@
         <div id="participantsGrid" class="grid cols-9 participants"></div>
       </div>
 
-      <!-- Timers -->
-      <div class="grid cols-2 timers">
-        <div class="timer" data-mins="3" data-secs="0">
-          <div class="headline">
-            <div><strong>Timer A</strong> (3:00)</div>
-            <div class="time" data-role="time">03:00</div>
-          </div>
-          <div class="controls">
-            <button class="primary" data-action="start">Start</button>
-            <button data-action="pause">Pause</button>
-            <button data-action="reset">Reset</button>
-          </div>
-          <div class="banner one" data-role="one">ONE MINUTE</div>
-          <div class="banner fin" data-role="fin">FINISHED</div>
-        </div>
-        <div class="timer" data-mins="3" data-secs="35">
-          <div class="headline">
-            <div><strong>Timer B</strong> (3:35)</div>
-            <div class="time" data-role="time">03:35</div>
-          </div>
-          <div class="controls">
-            <button class="primary" data-action="start">Start</button>
-            <button data-action="pause">Pause</button>
-            <button data-action="reset">Reset</button>
-          </div>
-          <div class="banner one" data-role="one">ONE MINUTE</div>
-          <div class="banner fin" data-role="fin">FINISHED</div>
-        </div>
-      </div>
+      <!-- Timers removed -->
     </div>
 
   </div>
@@ -468,50 +440,7 @@ window.addEventListener('keydown', (e)=>{
   if(e.key==='ArrowLeft') step(-1);
 });
 
-/* =========================
-   Timers
-========================= */
-class Countdown {
-  constructor(root){
-    this.root = root;
-    this.tEl = root.querySelector('[data-role="time"]');
-    this.one = root.querySelector('[data-role="one"]');
-    this.fin = root.querySelector('[data-role="fin"]');
-    this.baseSecs = parseInt(root.getAttribute('data-mins'),10)*60 + parseInt(root.getAttribute('data-secs'),10);
-    this.remaining = this.baseSecs;
-    this.tickId = null;
-    this.render();
-    root.querySelector('[data-action="start"]').addEventListener('click', ()=>this.start());
-    root.querySelector('[data-action="pause"]').addEventListener('click', ()=>this.pause());
-    root.querySelector('[data-action="reset"]').addEventListener('click', ()=>this.reset());
-  }
-  fmt(secs){
-    const m = Math.floor(secs/60), s = secs%60;
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  }
-  render(){
-    this.tEl.textContent = this.fmt(this.remaining);
-    if(this.remaining <= 60 && this.remaining > 0){ this.one.style.display = 'block'; }
-    else{ this.one.style.display = 'none'; }
-    this.fin.style.display = (this.remaining===0) ? 'block' : 'none';
-  }
-  start(){
-    if(this.tickId || this.remaining===0){ return; }
-    this.tickId = setInterval(()=>{
-      if(this.remaining>0){ this.remaining--; this.render(); }
-      if(this.remaining===0){ this.pause(); this.render(); }
-    }, 1000);
-  }
-  pause(){ if(this.tickId){ clearInterval(this.tickId); this.tickId=null; } }
-  reset(){
-    this.pause();
-    this.remaining = this.baseSecs;
-    this.one.style.display = 'none';
-    this.fin.style.display = 'none';
-    this.render();
-  }
-}
-function initTimers(){ document.querySelectorAll('.timer').forEach(t => new Countdown(t)); }
+/* Timers removed */
 
 /* =========================
    Events & init
@@ -525,7 +454,6 @@ document.getElementById('skipBreaks').addEventListener('change', ()=>{
 el.select.addEventListener('change', onSessionChange);
 el.reload.addEventListener('click', loadCSVFromSameDir);
 
-initTimers();
 loadCSVFromSameDir(); // auto-load exp.csv on page open
 </script>
 </body>
