@@ -98,22 +98,7 @@
   <!-- Live Participant Notifications -->
   <ul id="notifications"></ul>
 
-  <!-- Timer Interface -->
-  <div id="timerContainer">
-    <h2>Timer</h2>
-    <div id="menu">
-      <button data-seconds="215">3:35</button>
-      <button data-seconds="180">3:00</button>
-      <button data-seconds="90">1:30</button>
-    </div>
-
-    <div id="timerDisplay" style="display: none;">
-      <div id="timeDisplay">0:00</div>
-      <div id="warning" style="display: none;">LAST MINUTE</div>
-      <button id="pauseBtn">Pause</button>
-      <button id="stopBtn">Stop</button>
-    </div>
-  </div>
+  <!-- Timer Interface removed -->
 
   <!-- Offset Input Controls -->
   <div id="offsetControls">
@@ -204,93 +189,7 @@
     document.getElementById("refreshButton").addEventListener("click", renderNotifications);
     console.log("Listening for real-time notifications...");
 
-    // Timer Logic
-    let totalSeconds = 0;
-    let remainingSeconds = 0;
-    let timerInterval = null;
-    let paused = false;
-    let fullscreenTimers = [205, 180];
-    let inFullscreen = false;
-
-    const menu = document.getElementById("menu");
-    const timerDisplay = document.getElementById("timerDisplay");
-    const timeDisplay = document.getElementById("timeDisplay");
-    const warningDisplay = document.getElementById("warning");
-    const pauseBtn = document.getElementById("pauseBtn");
-    const stopBtn = document.getElementById("stopBtn");
-
-    function formatTime(seconds) {
-      let m = Math.floor(seconds / 60);
-      let s = seconds % 60;
-      return m + ":" + (s < 10 ? "0" + s : s);
-    }
-
-    function startTimer(seconds) {
-      totalSeconds = seconds;
-      remainingSeconds = seconds;
-      paused = false;
-      menu.style.display = "none";
-      timerDisplay.style.display = "block";
-      pauseBtn.textContent = "Pause";
-      updateDisplay();
-      timerInterval = setInterval(updateTimer, 1000);
-    }
-
-    function updateTimer() {
-      if (!paused) {
-        warningDisplay.style.display = remainingSeconds <= 60 ? "block" : "none";
-        if (fullscreenTimers.includes(totalSeconds) && remainingSeconds === 60 && !inFullscreen)
-          requestFullscreen();
-        updateDisplay();
-        if (remainingSeconds <= 0) {
-          clearInterval(timerInterval);
-          exitFullscreen();
-          setTimeout(returnToMenu, 500);
-          return;
-        }
-        remainingSeconds--;
-      }
-    }
-
-    function updateDisplay() {
-      timeDisplay.textContent = formatTime(remainingSeconds);
-    }
-
-    function requestFullscreen() {
-      if (document.documentElement.requestFullscreen)
-        document.documentElement.requestFullscreen();
-      else if (document.documentElement.webkitRequestFullscreen)
-        document.documentElement.webkitRequestFullscreen();
-      inFullscreen = true;
-    }
-
-    function exitFullscreen() {
-      if (document.exitFullscreen) document.exitFullscreen();
-      inFullscreen = false;
-    }
-
-    pauseBtn.addEventListener("click", function() {
-      paused = !paused;
-      pauseBtn.textContent = paused ? "Resume" : "Pause";
-    });
-
-    stopBtn.addEventListener("click", function() {
-      clearInterval(timerInterval);
-      exitFullscreen();
-      returnToMenu();
-    });
-
-    function returnToMenu() {
-      menu.style.display = "block";
-      timerDisplay.style.display = "none";
-      warningDisplay.style.display = "none";
-    }
-
-    document.querySelectorAll("#menu button").forEach(button => {
-      button.addEventListener("click", function() {
-        startTimer(parseInt(button.getAttribute("data-seconds")));
-      });
-    });
+    // Timer logic removed (UI handled elsewhere or not needed)
   </script>
 </body>
 </html>
