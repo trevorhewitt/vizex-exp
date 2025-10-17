@@ -121,6 +121,7 @@
   </div>
 
   <script>
+
     // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBoKMhXWiu-Ryc2d9_WesXx8SkTL5ee7ag",
@@ -173,21 +174,32 @@
         const participantName = data.n || "";
         const sessionCode = data.s || "";
         const trialOrder = data.t || "";
+
         // ensure i defaults to "0" when missing
         const trialIndex = (data.i === undefined || data.i === null || data.i === "") ? "0" : String(data.i);
-        const modeRaw = (data.m === undefined || data.m === null) ? "0" : String(data.m);
-        const modeLabel = modeRaw === "1" ? "dev" : "experiment";
-        const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Unknown Time";
-        const bgColor = getPseudoRandomColor(participantId, participantOffsetText);
-        const borderColor = getPseudoRandomColor(trialOrder, pageOffsetText, true);
-        const notificationText = `${timestamp} - Participant ${participantName} has reached trial ${trialIndex}`;
-        const li = document.createElement("li");
-        li.textContent = notificationText;
-        li.classList.add("notification");
-        li.style.backgroundColor = bgColor;
-        li.style.borderColor = borderColor;
-        notificationsList.appendChild(li);
-      });
+
+
+    // Filter out "X"s for display, but keep index for notification
+    const filteredTrialOrder = Array.from(trialOrder).filter(trial => trial !== "X");
+    //remove first character of filteredTrialOrder
+    filteredTrialOrder.shift();
+
+    const currentTrial = filteredTrialOrder[trialIndex] || "";
+
+    const modeRaw = (data.m === undefined || data.m === null) ? "0" : String(data.m);
+    const modeLabel = modeRaw === "1" ? "dev" : "experiment";
+    const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Unknown Time";
+    const bgColor = getPseudoRandomColor(participantId, participantOffsetText);
+    const borderColor = getPseudoRandomColor(trialOrder, pageOffsetText, true);
+    //const notificationText = `${timestamp} - Participant ${participantName} has reached trial number ${trialIndex} (${currentTrial})`;
+    const notificationText = `${timestamp} - Participant ${participantName} has reached trial number ${parseInt(trialIndex) + 1} (${currentTrial}) | ${sessionCode}`;
+    const li = document.createElement("li");
+    li.textContent = notificationText;
+    li.classList.add("notification");
+    li.style.backgroundColor = bgColor;
+    li.style.borderColor = borderColor;
+    notificationsList.appendChild(li);
+  });
     }
 
     // Update notifications from Firebase (initial load)
