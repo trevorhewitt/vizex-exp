@@ -115,7 +115,7 @@
             <div id="meaningSub" class="muted small">—</div>
           </div>
           <div class="small muted" style="margin-top:10px;">
-            Legend: A/B/C/D = Image trial • 0..6 = LIGHT Hz (2,5,10,15,20,40,80) • X = Break
+            Legend: A–D = image trials; X = break; 9 = practice 15 Hz. 1 = 2.5 Hz, 2 = 5 Hz, 3 = 10 Hz, 4 = 15 Hz, 5 = 20 Hz, 6 = 40 Hz, 7 = 80 Hz.
           </div>
         </div>
       </div>
@@ -164,10 +164,12 @@
 
 <script>
 /* =========================
-   Small utilities
+  Small utilities
 ========================= */
-const hzMap = { '0': '2 Hz', '1': '5 Hz', '2': '10 Hz', '3': '15 Hz', '4': '20 Hz', '5': '40 Hz', '6': '80 Hz' };
-const isLightCode = c => '0123456'.includes(c);
+// mapping: '1'..'7' -> 2.5,5,10,15,20,40,80 Hz; '9' = practice 15 Hz
+const hzMap = { '1': '2.5 Hz', '2': '5 Hz', '3': '10 Hz', '4': '15 Hz', '5': '20 Hz', '6': '40 Hz', '7': '80 Hz', '9': '15 Hz (practice)' };
+const isLightCode = c => '1234567'.includes(c);
+const isPracticeCode = c => c === '9';
 const isImageCode = c => 'ABCD'.includes(c);
 const isBreak = c => c === 'X';
 
@@ -259,6 +261,7 @@ function analyzeOrder(order){
 function trialMeaning(c){
   if(isBreak(c)) return { main:'Break', sub:'Pause between blocks' };
   if(isImageCode(c)) return { main:`Image trial ${c}`, sub:'Present image stimulus' };
+  if(isPracticeCode(c)) return { main:`Practice LIGHT ${hzMap[c]}`, sub:`Practice flicker frequency: ${hzMap[c]}` };
   if(isLightCode(c)) return { main:`LIGHT ${hzMap[c]}`, sub:`Flicker frequency: ${hzMap[c]}` };
   return { main:'Unknown', sub:'' };
 }
@@ -359,7 +362,15 @@ function renderOrderChips(order){
     const span = document.createElement('span');
     span.className = 'chip' + (c==='X' ? ' break' : '') + (i===state.currentIndex ? ' current' : '');
     span.textContent = c;
-    span.title = isBreak(c) ? 'Break' : (isImageCode(c) ? `Image ${c}` : (isLightCode(c) ? `LIGHT ${hzMap[c]}` : 'Unknown'));
+   span.title = isBreak(c)
+    ? 'Break'
+    : (isImageCode(c)
+      ? `Image ${c}`
+      : (isPracticeCode(c)
+        ? `Practice LIGHT ${hzMap[c]}`
+        : (isLightCode(c)
+          ? `LIGHT ${hzMap[c]}`
+          : 'Unknown')));
     span.addEventListener('click', ()=>{ state.currentIndex = i; renderAll(); });
     el.orderChips.appendChild(span);
   });
