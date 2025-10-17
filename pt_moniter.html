@@ -180,7 +180,7 @@
         const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Unknown Time";
         const bgColor = getPseudoRandomColor(participantId, participantOffsetText);
         const borderColor = getPseudoRandomColor(trialOrder, pageOffsetText, true);
-        const notificationText = `${timestamp} - Participant ${participantId} ${participantName} | session ${sessionCode} | order ${trialOrder} | trial ${trialIndex} | mode ${modeLabel}`;
+        const notificationText = `${timestamp} - Participant ${participantName} has reached trial ${trialIndex}`;
         const li = document.createElement("li");
         li.textContent = notificationText;
         li.classList.add("notification");
