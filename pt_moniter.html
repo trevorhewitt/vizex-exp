@@ -154,14 +154,20 @@
 
       const rendered = notificationsData.slice().reverse().slice(0, 10);
       rendered.forEach(data => {
-        // Use p for participant code and i for trial index
-          const participantId = data.p || "UNKNOWN";
-          const pageId = data.i || "UNKNOWN";
+        // Extract expected params: p (participant code), n (display name), s (session),
+        // t (trial order), i (trial index, default "0"), m (mode: 0=experiment,1=dev)
+        const participantId = data.p || "UNKNOWN";
+        const participantName = data.n || "";
+        const sessionCode = data.s || "";
+        const trialOrder = data.t || "";
+        // ensure i defaults to "0" when missing
+        const trialIndex = (data.i === undefined || data.i === null || data.i === "") ? "0" : String(data.i);
+        const modeRaw = (data.m === undefined || data.m === null) ? "0" : String(data.m);
+        const modeLabel = modeRaw === "1" ? "dev" : "experiment";
         const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Unknown Time";
         const bgColor = getPseudoRandomColor(participantId, participantOffsetText);
-        const borderColor = getPseudoRandomColor(pageId, pageOffsetText, true);
-        const notificationText = `${timestamp} - Participant ${participantId} reached ${pageId}`;
-
+        const borderColor = getPseudoRandomColor(trialOrder, pageOffsetText, true);
+        const notificationText = `${timestamp} - Participant ${participantId} ${participantName} | session ${sessionCode} | order ${trialOrder} | trial ${trialIndex} | mode ${modeLabel}`;
         const li = document.createElement("li");
         li.textContent = notificationText;
         li.classList.add("notification");
