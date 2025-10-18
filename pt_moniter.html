@@ -166,7 +166,14 @@
       const participantOffsetText = document.getElementById("participantOffset").value || "";
       const pageOffsetText = document.getElementById("pageOffset").value || "";
 
-  const rendered = notificationsData.slice().reverse();
+  // Only show last 16 experiment entries
+  const rendered = notificationsData
+    .filter(data => {
+      const modeRaw = (data.m === undefined || data.m === null) ? "0" : String(data.m);
+      return modeRaw === "0"; // experiment mode only
+    })
+    .slice(-16)
+    .reverse();
   rendered.forEach(data => {
         // Extract expected params: p (participant code), n (display name), s (session),
         // t (trial order), i (trial index, default "0"), m (mode: 0=experiment,1=dev)
